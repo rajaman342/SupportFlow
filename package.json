@@ -14,12 +14,15 @@
     "build": "npm run build -w @supportflow/frontend",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run tests/integration",
+    "test:security": "vitest run tests/security",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "migrate": "node-pg-migrate -m migrations up",
     "migrate:status": "node-pg-migrate -m migrations status",
     "migrate:down": "node-pg-migrate -m migrations down",
+    "seed": "node scripts/seed.js",
     "spike:hash": "node scripts/spikes/password-hash.js"
   },
   "devDependencies": {

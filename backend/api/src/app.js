@@ -6,6 +6,10 @@ import { getConfig, logger } from '@supportflow/shared';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { errorHandlerMiddleware } from './middleware/errorHandler.js';
 import healthRoutes from './routes/health.js';
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import ticketRoutes from './routes/ticketRoutes.js';
+import auditLogRoutes from './routes/auditLogRoutes.js';
 
 export function createApp() {
   const config = getConfig();
@@ -43,11 +47,22 @@ export function createApp() {
     next();
   });
 
-  // Health and Readiness endpoints (mounted at root per API_SPEC §2.6)
+  // Health and Readiness endpoints
   app.use('/', healthRoutes);
-
-  // API v1 prefix (also mount health there for convenience)
   app.use('/api/v1', healthRoutes);
+
+  // Authentication endpoints (/auth and /api/v1/auth)
+  app.use('/auth', authRoutes);
+  app.use('/api/v1/auth', authRoutes);
+
+  // User management endpoints
+  app.use('/api/v1/users', userRoutes);
+
+  // Ticketing endpoints
+  app.use('/api/v1/tickets', ticketRoutes);
+
+  // Audit log endpoints
+  app.use('/api/v1/audit-logs', auditLogRoutes);
 
   // 404 handler for undefined routes
   app.use((req, _res, next) => {

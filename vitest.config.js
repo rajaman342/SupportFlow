@@ -9,7 +9,7 @@ export default defineConfig({
           name: 'backend',
           globals: true,
           environment: 'node',
-          include: ['backend/**/*.test.js']
+          include: ['backend/**/*.test.js', 'tests/**/*.test.js']
         }
       },
       {

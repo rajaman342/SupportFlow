@@ -121,4 +121,7 @@ npm run lint
 
 | Date | Commit | Command | Environment | Result | Notes |
 |---|---|---|---|---|---|
-| | | | | | *No runs recorded yet* |
+| 2026-10-11 | 0d792f8 | `npm test` | local node v22 | 5 files passed, 15 tests passed | Phase 1 skeleton tests (config, error envelope, request ID, health routes, React UI) |
+| 2026-10-11 | phase-2 | `npm test` | local node v22 | 10 files passed, 43 tests passed | Phase 2 complete suite (all units, integration, security, frontend) |
+| 2026-10-11 | phase-2 | `npm run test:security` | local node v22 + docker pg | 2 files passed, 10 tests passed | CSRF protection, tenant isolation, cross-customer 404 boundaries |
+| 2026-10-11 | phase-2 | `npm run test:integration` | local node v22 + docker pg | 3 files passed, 18 tests passed | Auth flow + token reuse detection, ticket lifecycle & FTS, user administration |

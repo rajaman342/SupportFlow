@@ -61,10 +61,10 @@ A feature may only be marked ✅ when its evidence-log row exists. A passing run
 | Docker Compose (postgres+pgvector, redis, api, worker, frontend, migrate) | 1 | ✅ |
 | `/health`, `/ready`, request IDs, structured logs, env validation | 1 | ✅ |
 | Argon2id vs bcrypt spike | 1 | ✅ |
-| Migrations 0001–0005, auth, refresh rotation, CSRF controls | 2 | 🗓 |
-| RBAC, ownership checks, tenant isolation tests | 2 | 🗓 |
-| Ticket CRUD, messages, assignment, transitions, search, pagination | 2 | 🗓 |
-| Audit logging | 2 | 🗓 |
+| Migrations 0001–0005, auth, refresh rotation, CSRF controls | 2 | ✅ |
+| RBAC, ownership checks, tenant isolation tests | 2 | ✅ |
+| Ticket CRUD, messages, assignment, transitions, search, pagination | 2 | ✅ |
+| Audit logging | 2 | ✅ |
 | React app (auth, customer, agent, admin pages) | 3 | 🗓 |
 | StorageProvider (local), upload validation, PDF extraction, chunking | 4 | 🗓 |
 | Mock embedding provider, indexing_configs, chunk persistence | 4 | 🗓 |
@@ -267,6 +267,15 @@ flowchart LR
 | 2026-10-11 | 1 | /ready dependency failure & recovery | `docker compose stop redis && curl http://localhost:4000/ready` | local docker | phase-1 | 503 `DEPENDENCY_UNAVAILABLE` with `details: {database:true, redis:false}`; returned 200 on restart |
 | 2026-10-11 | 1 | BullMQ background worker ping job | `docker compose logs worker` | local docker | phase-1 | Worker enqueued and completed ping job: `{pong: true}` |
 | 2026-10-11 | 1 | Frontend web application | `curl http://localhost:5173` | local docker | phase-1 | HTTP 200 OK, Vite + React + Tailwind service dashboard loaded |
+| 2026-10-11 | 2 | Schema migrations 0002–0005 | `npm run migrate` | local postgres | phase-2 | Created organizations, users, refresh_tokens, tickets, ticket_messages, audit_logs; foreign keys, check constraints, GIN FTS index verified |
+| 2026-10-11 | 2 | Complete test suite (43/43 passed) | `npm test` | local node v22 | phase-2 | 10 test files passed, 43 tests passed, 0 failed, 0 skipped across shared, api, and frontend |
+| 2026-10-11 | 2 | Auth & refresh token rotation + reuse detection | `npm run test:integration` | local postgres | phase-2 | Argon2id login, rotation, reuse revokes entire family with REFRESH_REUSE_DETECTED, logout revocation passed (8 tests) |
+| 2026-10-11 | 2 | CSRF protection & origin validation | `npm run test:security` | local api | phase-2 | Rejects missing X-Requested-With and foreign Origins on cookie endpoints with 403 CSRF_REJECTED (3 tests) |
+| 2026-10-11 | 2 | Tenant & customer isolation scoping | `npm run test:security` | local postgres | phase-2 | Cross-tenant and cross-customer queries return 404 NOT_FOUND (never disclosing existence), customer blocked from admin APIs (7 tests) |
+| 2026-10-11 | 2 | Ticket lifecycle, transitions, FTS | `npm run test:integration` | local postgres | phase-2 | Atomic creation, agent/admin assignment, open->resolved requiring agent message check, auto-reopen on message, search passed (5 tests) |
+| 2026-10-11 | 2 | User administration & last admin invariant | `npm run test:integration` | local postgres | phase-2 | Admin creates/manages users; cannot demote or deactivate sole remaining active admin with LAST_ACTIVE_ADMIN violation (5 tests) |
+| 2026-10-11 | 2 | Synthetic test seed script | `npm run seed` | local postgres | phase-2 | Seeded demo-org, 1 admin, 2 agents, 2 customers, 3 tickets successfully |
+| 2026-10-11 | 2 | Code quality / Lint | `npm run lint` | local node v22 | phase-2 | Passed with 0 errors, 0 warnings |
 
 ## 10. Document consistency rule
 
