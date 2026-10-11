@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+# env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# builds and tooling output
+dist/
+build/
+coverage/
+.vite/
+*.log
+npm-debug.log*
+# local data
+/data/
+uploads/
+*.sqlite
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+# test artifacts
+playwright-report/
+test-results/

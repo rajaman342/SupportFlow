@@ -1,0 +1,35 @@
+{
+  "name": "supportflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "backend/shared",
+    "backend/api",
+    "backend/worker",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"api,worker,ui\" -c \"blue,green,magenta\" \"npm run dev -w @supportflow/api\" \"npm run dev -w @supportflow/worker\" \"npm run dev -w @supportflow/frontend\"",
+    "build": "npm run build -w @supportflow/frontend",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "migrate": "node-pg-migrate -m migrations up",
+    "migrate:status": "node-pg-migrate -m migrations status",
+    "migrate:down": "node-pg-migrate -m migrations down",
+    "spike:hash": "node scripts/spikes/password-hash.js"
+  },
+  "devDependencies": {
+    "argon2": "^0.41.1",
+    "bcrypt": "^5.1.1",
+    "concurrently": "^9.1.2",
+    "dotenv": "^16.4.7",
+    "eslint": "^9.21.0",
+    "node-pg-migrate": "^7.9.1",
+    "prettier": "^3.5.2",
+    "vitest": "^3.0.7"
+  }
+}
