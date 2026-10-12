@@ -1,6 +1,6 @@
 export default [
   {
-    ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'build/**', '.vite/**']
+    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '**/build/**', '**/.vite/**']
   },
   {
     languageOptions: {
