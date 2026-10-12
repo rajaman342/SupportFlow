@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import App from './App.jsx';
 
@@ -8,41 +8,65 @@ describe('Frontend App Component', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders the SupportFlow heading and status cards', async () => {
-    // Mock fetch responses for /health and /ready
+  it('renders the login page when unauthenticated', async () => {
+    // Mock fetch for /api/v1/auth/refresh returning 401 unauthenticated
     global.fetch = vi.fn().mockImplementation((url) => {
-      if (url === '/health') {
+      if (url.includes('/api/v1/auth/refresh')) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: () => Promise.resolve({ error: { code: 'REFRESH_INVALID', message: 'No refresh token' } })
+        });
+      }
+      if (url.includes('/health')) {
         return Promise.resolve({
           ok: true,
+          status: 200,
           json: () => Promise.resolve({ data: { status: 'ok' } })
         });
       }
-      if (url === '/ready') {
+      if (url.includes('/ready')) {
         return Promise.resolve({
           ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                status: 'ready',
-                dependencies: { database: true, redis: true }
-              }
-            })
+          status: 200,
+          json: () => Promise.resolve({ data: { status: 'ready', dependencies: { database: true, redis: true } } })
         });
       }
-      return Promise.reject(new Error('Unknown endpoint'));
+      return Promise.reject(new Error(`Unhandled request to ${url}`));
     });
 
-    await act(async () => {
-      render(<App />);
-    });
-
-    expect(screen.getByText(/SupportFlow/i)).toBeInTheDocument();
-    expect(screen.getByText(/API Liveness/i)).toBeInTheDocument();
-    expect(screen.getByText(/Readiness/i)).toBeInTheDocument();
+    render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Healthy \(200 OK\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Ready \(200 OK\)/i)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /SupportFlow/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Sign In/i })).toBeInTheDocument();
+    });
+  });
+
+  it('displays quick demo account fill options', async () => {
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url.includes('/api/v1/auth/refresh')) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: () => Promise.resolve({ error: { code: 'REFRESH_INVALID' } })
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: {} })
+      });
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Admin/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Agent 1/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Customer 1/i })).toBeInTheDocument();
     });
   });
 });

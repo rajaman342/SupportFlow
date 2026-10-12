@@ -125,3 +125,5 @@ npm run lint
 | 2026-10-11 | phase-2 | `npm test` | local node v22 | 10 files passed, 43 tests passed | Phase 2 complete suite (all units, integration, security, frontend) |
 | 2026-10-11 | phase-2 | `npm run test:security` | local node v22 + docker pg | 2 files passed, 10 tests passed | CSRF protection, tenant isolation, cross-customer 404 boundaries |
 | 2026-10-11 | phase-2 | `npm run test:integration` | local node v22 + docker pg | 3 files passed, 18 tests passed | Auth flow + token reuse detection, ticket lifecycle & FTS, user administration |
+| 2026-10-12 | phase-3 | `npm run test:frontend` | local node v22 | 7 files passed, 23 tests passed | Phase 3 frontend components, routing, in-memory auth client, and role access tests |
+| 2026-10-12 | phase-3 | `npm test` | local node v22 + docker | 16 files passed, 65 tests passed | Complete Phase 1-3 full test suite |

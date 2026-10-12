@@ -9,7 +9,8 @@ export default defineConfig({
     proxy: {
       '/health': 'http://localhost:4000',
       '/ready': 'http://localhost:4000',
-      '/api': 'http://localhost:4000'
+      '/api': 'http://localhost:4000',
+      '/auth': 'http://localhost:4000'
     }
   },
   test: {

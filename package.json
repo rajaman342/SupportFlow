@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:integration": "vitest run tests/integration",
     "test:security": "vitest run tests/security",
+    "test:frontend": "vitest run --project frontend",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",

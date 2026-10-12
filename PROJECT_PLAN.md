@@ -65,7 +65,7 @@ A feature may only be marked ✅ when its evidence-log row exists. A passing run
 | RBAC, ownership checks, tenant isolation tests | 2 | ✅ |
 | Ticket CRUD, messages, assignment, transitions, search, pagination | 2 | ✅ |
 | Audit logging | 2 | ✅ |
-| React app (auth, customer, agent, admin pages) | 3 | 🗓 |
+| React app (auth, customer, agent, admin pages) | 3 | ✅ |
 | StorageProvider (local), upload validation, PDF extraction, chunking | 4 | 🗓 |
 | Mock embedding provider, indexing_configs, chunk persistence | 4 | 🗓 |
 | BullMQ ingestion, retries, idempotency, reconciler | 4 | 🗓 |
@@ -276,6 +276,11 @@ flowchart LR
 | 2026-10-11 | 2 | User administration & last admin invariant | `npm run test:integration` | local postgres | phase-2 | Admin creates/manages users; cannot demote or deactivate sole remaining active admin with LAST_ACTIVE_ADMIN violation (5 tests) |
 | 2026-10-11 | 2 | Synthetic test seed script | `npm run seed` | local postgres | phase-2 | Seeded demo-org, 1 admin, 2 agents, 2 customers, 3 tickets successfully |
 | 2026-10-11 | 2 | Code quality / Lint | `npm run lint` | local node v22 | phase-2 | Passed with 0 errors, 0 warnings |
+| 2026-10-12 | 3 | React production build | `npm run build -w @supportflow/frontend` | local node v22 | phase-3 | Vite bundled 1621 modules cleanly into dist/ with zero errors |
+| 2026-10-12 | 3 | Frontend component & client tests (23/23 passed) | `npm run test:frontend` | local node v22 | phase-3 | 7 test files, 23 tests passed (API client in-memory token/single-flight refresh, ProtectedRoute, Login, CustomerDashboard, TicketDetail, AdminUsers) |
+| 2026-10-12 | 3 | Full test suite (65/65 passed) | `npm test` | local node v22 + docker | phase-3 | 16 test files, 65 tests passed across backend unit/integration/security and frontend components |
+| 2026-10-12 | 3 | Frontend live SPA serving | `curl http://localhost:5173` | local docker | phase-3 | HTTP 200 OK, React SPA index HTML loaded |
+| 2026-10-12 | 3 | Code quality / Lint | `npm run lint` | local node v22 | phase-3 | Passed with 0 errors, 0 warnings |
 
 ## 10. Document consistency rule
 
