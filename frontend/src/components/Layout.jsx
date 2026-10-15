@@ -12,6 +12,7 @@ import {
   Shield,
   Menu,
   X,
+  BookOpen,
   User as UserIcon
 } from 'lucide-react';
 
@@ -71,10 +72,16 @@ export default function Layout() {
                 )}
 
                 {isStaff && (
-                  <NavLink to="/agent/tickets" className={navLinkClass}>
-                    <Ticket className="w-4 h-4" />
-                    <span>Ticket Queue</span>
-                  </NavLink>
+                  <>
+                    <NavLink to="/agent/tickets" className={navLinkClass}>
+                      <Ticket className="w-4 h-4" />
+                      <span>Ticket Queue</span>
+                    </NavLink>
+                    <NavLink to="/agent/documents" className={navLinkClass}>
+                      <BookOpen className="w-4 h-4" />
+                      <span>Knowledge Base</span>
+                    </NavLink>
+                  </>
                 )}
 
                 {isAdmin && (
@@ -166,14 +173,24 @@ export default function Layout() {
               )}
 
               {isStaff && (
-                <NavLink
-                  to="/agent/tickets"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={navLinkClass}
-                >
-                  <Ticket className="w-4 h-4" />
-                  <span>Ticket Queue</span>
-                </NavLink>
+                <>
+                  <NavLink
+                    to="/agent/tickets"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={navLinkClass}
+                  >
+                    <Ticket className="w-4 h-4" />
+                    <span>Ticket Queue</span>
+                  </NavLink>
+                  <NavLink
+                    to="/agent/documents"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={navLinkClass}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Knowledge Base</span>
+                  </NavLink>
+                </>
               )}
 
               {isAdmin && (

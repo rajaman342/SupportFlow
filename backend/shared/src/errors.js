@@ -88,3 +88,27 @@ export class AiProviderUnavailableError extends AppError {
     super(message, 'AI_PROVIDER_UNAVAILABLE', 503);
   }
 }
+
+export class InvalidFileError extends AppError {
+  constructor(message = 'Invalid file provided', code = 'INVALID_FILE', details = null) {
+    super(message, code, 400, details);
+  }
+}
+
+export class PdfExtractionError extends AppError {
+  constructor(message, code = 'PDF_CORRUPT', details = null) {
+    super(message, code, 422, details);
+  }
+}
+
+export class EmbeddingDimensionMismatchError extends AppError {
+  constructor(message = 'Embedding vector dimensions do not match indexing config', details = null) {
+    super(message, 'EMBEDDING_DIMENSION_MISMATCH', 422, details);
+  }
+}
+
+export class EmbeddingFailedError extends AppError {
+  constructor(message = 'Failed to generate embeddings', details = null) {
+    super(message, 'EMBEDDING_FAILED', 503, details);
+  }
+}

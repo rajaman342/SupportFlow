@@ -287,3 +287,120 @@ export const auditLogsApi = {
     return request(`/api/v1/audit-logs${query}`);
   }
 };
+
+// Documents API (Agent/Admin)
+export const documentsApi = {
+  list: async (params = {}) => {
+    const searchParams = new URLSearchParams();
+    for (const [key, val] of Object.entries(params)) {
+      if (val !== undefined && val !== null && val !== '') {
+        searchParams.append(key, val);
+      }
+    }
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return request(`/api/v1/documents${query}`);
+  },
+  get: async (id) => {
+    const res = await request(`/api/v1/documents/${id}`);
+    return res.data;
+  },
+  upload: async (formData) => {
+    const res = await request('/api/v1/documents', {
+      method: 'POST',
+      body: formData
+    });
+    return res.data;
+  },
+  replace: async (id, formData) => {
+    const res = await request(`/api/v1/documents/${id}/file`, {
+      method: 'PUT',
+      body: formData
+    });
+    return res.data;
+  },
+  reindex: async (id) => {
+    const res = await request(`/api/v1/documents/${id}/reindex`, {
+      method: 'POST'
+    });
+    return res.data;
+  },
+  downloadUrl: async (id, version) => {
+    const query = version ? `?version=${version}` : '';
+    const res = await request(`/api/v1/documents/${id}/download-url${query}`);
+    return res.data;
+  },
+  delete: async (id) => {
+    return request(`/api/v1/documents/${id}`, {
+      method: 'DELETE'
+    });
+  }
+};
+
+export const aiSuggestionsApi = {
+  generate: async (ticketId, force = false) => {
+    const res = await request(`/api/v1/tickets/${ticketId}/ai-suggestions`, {
+      method: 'POST',
+      body: JSON.stringify({ force })
+    });
+    return res.data;
+  },
+  list: async (ticketId, params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.append('page', params.page);
+    if (params.limit) searchParams.append('limit', params.limit);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return request(`/api/v1/tickets/${ticketId}/ai-suggestions${query}`);
+  },
+  getById: async (id) => {
+    const res = await request(`/api/v1/ai-suggestions/${id}`);
+    return res.data;
+  },
+  review: async (id, { action, body, reason } = {}) => {
+    const res = await request(`/api/v1/ai-suggestions/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ action, body, reason })
+    });
+    return res.data;
+  },
+  getSource: async (id, sourceId) => {
+    const res = await request(`/api/v1/ai-suggestions/${id}/sources/${sourceId}`);
+    return res.data;
+  }
+};
+
+export const api = {
+  get: async (path, options = {}) => {
+    let url = path;
+    if (options.params) {
+      const searchParams = new URLSearchParams();
+      for (const [key, val] of Object.entries(options.params)) {
+        if (val !== undefined && val !== null && val !== '') {
+          searchParams.append(key, val);
+        }
+      }
+      const q = searchParams.toString();
+      if (q) url = `${url}${url.includes('?') ? '&' : '?'}${q}`;
+    }
+    const res = await request(url, { ...options, method: 'GET' });
+    return { data: res };
+  },
+  post: async (path, body, options = {}) => {
+    const reqBody = body instanceof FormData ? body : JSON.stringify(body);
+    const res = await request(path, { ...options, method: 'POST', body: reqBody });
+    return { data: res };
+  },
+  put: async (path, body, options = {}) => {
+    const reqBody = body instanceof FormData ? body : JSON.stringify(body);
+    const res = await request(path, { ...options, method: 'PUT', body: reqBody });
+    return { data: res };
+  },
+  patch: async (path, body, options = {}) => {
+    const reqBody = body instanceof FormData ? body : JSON.stringify(body);
+    const res = await request(path, { ...options, method: 'PATCH', body: reqBody });
+    return { data: res };
+  },
+  delete: async (path, options = {}) => {
+    const res = await request(path, { ...options, method: 'DELETE' });
+    return { data: res };
+  }
+};

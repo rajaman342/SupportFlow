@@ -1,0 +1,101 @@
+name: SupportFlow CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-and-test:
+    name: Lint, Test, Evaluate & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: supportflow
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: supportflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U supportflow -d supportflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      PORT: 4000
+      API_PORT: 4000
+      APP_BASE_URL: http://localhost:5173
+      CORS_ORIGINS: http://localhost:5173
+      DATABASE_URL: postgres://supportflow:ci_test_password@127.0.0.1:5432/supportflow
+      REDIS_URL: redis://127.0.0.1:6379
+      JWT_ACCESS_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      STORAGE_URL_SIGNING_SECRET: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210
+      STORAGE_PROVIDER: local
+      LOCAL_STORAGE_DIR: ./data/storage
+      LLM_PROVIDER: mock
+      EMBEDDING_PROVIDER: mock
+      EMBEDDING_MODEL: mock-hash-v1
+      EMBEDDING_DIMENSIONS: 384
+      EMBEDDING_CONFIG_NAME: mock-hash-v1-384
+      PASSWORD_HASH_ALGORITHM: argon2id
+      DEFAULT_ORGANIZATION_SLUG: demo-org
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v22)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check code formatting & lint
+        run: npm run lint
+
+      - name: Run unit test suites
+        run: npm run test:unit
+
+      - name: Apply PostgreSQL database migrations
+        run: npm run migrate
+
+      - name: Run integration test suites
+        run: npm run test:integration
+
+      - name: Run security & RBAC boundary test suites
+        run: npm run test:security
+
+      - name: Run frontend component tests
+        run: npm run test:frontend
+
+      - name: Execute RAG evaluation benchmark harness
+        run: npm run eval:mock
+
+      - name: Build frontend production bundle
+        run: npm run build
+
+      - name: Verify Docker build (Backend API)
+        run: docker build -f backend/api/Dockerfile -t supportflow-api:ci .
+
+      - name: Verify Docker build (Backend Worker)
+        run: docker build -f backend/worker/Dockerfile -t supportflow-worker:ci .

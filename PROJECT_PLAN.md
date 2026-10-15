@@ -66,16 +66,16 @@ A feature may only be marked ✅ when its evidence-log row exists. A passing run
 | Ticket CRUD, messages, assignment, transitions, search, pagination | 2 | ✅ |
 | Audit logging | 2 | ✅ |
 | React app (auth, customer, agent, admin pages) | 3 | ✅ |
-| StorageProvider (local), upload validation, PDF extraction, chunking | 4 | 🗓 |
-| Mock embedding provider, indexing_configs, chunk persistence | 4 | 🗓 |
-| BullMQ ingestion, retries, idempotency, reconciler | 4 | 🗓 |
-| Safe replace / reindex / delete | 4 | 🗓 |
+| StorageProvider (local), upload validation, PDF extraction, chunking | 4 | ✅ |
+| Mock embedding provider, indexing_configs, chunk persistence | 4 | ✅ |
+| BullMQ ingestion, retries, idempotency, reconciler | 4 | ✅ |
+| Safe replace / reindex / delete | 4 | ✅ |
 | Cloudinary provider (after verification spike) | 4 | 🗓 |
-| Retrieval, citation validation, mock LLM, human review UI | 5 | 🗓 |
+| Retrieval, citation validation, mock LLM, human review UI | 5 | ✅ |
 | Real provider selection and dimension verification | 5 | 🗓 |
-| Redis caching, rate limiting, shutdown, failure behavior | 6 | 🗓 |
-| Full test matrix, security tests, RAG evaluation | 7 | 🗓 |
-| CI, prod compose, demo seed, README polish | 8 | 🗓 |
+| Redis caching, rate limiting, shutdown, failure behavior | 6 | ✅ |
+| Full test matrix, security tests, RAG evaluation | 7 | ✅ |
+| CI, prod compose, demo seed, README polish | 8 | ✅ |
 | Optional improvements | 9 | 🗓 |
 
 ## 6. Phases
@@ -281,6 +281,38 @@ flowchart LR
 | 2026-10-12 | 3 | Full test suite (65/65 passed) | `npm test` | local node v22 + docker | phase-3 | 16 test files, 65 tests passed across backend unit/integration/security and frontend components |
 | 2026-10-12 | 3 | Frontend live SPA serving | `curl http://localhost:5173` | local docker | phase-3 | HTTP 200 OK, React SPA index HTML loaded |
 | 2026-10-12 | 3 | Code quality / Lint | `npm run lint` | local node v22 | phase-3 | Passed with 0 errors, 0 warnings |
+| 2026-10-12 | 4 | Migration 0006: Knowledge Base schema | `npm run migrate` | local postgres | phase-4 | Created `indexing_configs` (seed `mock-hash-v1-384`), `knowledge_documents`, `knowledge_document_versions`, `document_chunks` with composite FK `(indexing_config_id, embedding_dimensions)` and `vector_dims()` check |
+| 2026-10-12 | 4 | Ingestion Unit Tests (16/16 passed) | `npx vitest run tests/unit` | local node v22 | phase-4 | 3 test files, 16 tests passed (`pdfExtractor`: valid extraction, `PDF_CORRUPT`, `PDF_NO_TEXT`, `PDF_TOO_MANY_PAGES`; `chunker`: page boundary isolation, contiguous chunk indexes, boundary preferences; `mockEmbeddingProvider`: deterministic feature hashing, L2 normalization, production refusal) |
+| 2026-10-12 | 4 | Document Domain & Ingestion Integration Tests (24/24 passed) | `npm run test:integration` | local postgres | phase-4 | 4 test files, 24 tests passed (upload, worker ingestion to `indexed`, safe replacement invariant where corrupt replacement keeps active version searchable, 409 duplicate SHA-256 conflict, signed URL download token verification, reindexing, and soft delete) |
+| 2026-10-12 | 4 | Document Security & Tenant Isolation Tests (13/13 passed) | `npm run test:security` | local postgres | phase-4 | 3 test files, 13 tests passed (cross-organization access returns 404, customer role blocked with 403 on all document endpoints, forged/expired signed URL tokens rejected with 403) |
+| 2026-10-12 | 4 | Frontend UI & Component Tests (26/26 passed) | `npm run test:frontend` | local node v22 | phase-4 | 8 test files, 26 tests passed (including KnowledgeDocuments listing, upload modal, empty state, and status display) |
+| 2026-10-12 | 4 | Complete Test Suite (93/93 passed) | `npm test` | local node v22 + docker | phase-4 | 22 test files, 93 passed tests, 0 failed, 0 skipped |
+| 2026-10-12 | 4 | Code quality & Production Build | `npm run lint && npm run build` | local node v22 | phase-4 | ESLint passed with 0 errors/0 warnings; Vite built 1622 modules cleanly |
+| 2026-10-12 | 5 | Migration 0007: AI Responses & Snapshot Sources | `npm run migrate` | local postgres | phase-5 | Created `ai_responses`, `ai_response_sources`, check constraints (`outcome_draft_body_check`, `review_status_fields_check`), and added FK `ticket_messages.ai_response_id` |
+| 2026-10-12 | 5 | RAG & LLM Unit Tests (29/29 passed) | `npx vitest run tests/unit` | local node v22 | phase-5 | 5 test files, 29 tests passed (`citationValidator`: bounds checking, markdown fence stripping, fabricated citation sanitization, automatic downgrade on missing/zero citations; `mockLlmProvider`: deterministic generation citing `[1]`, production refusal, test hooks) |
+| 2026-10-12 | 5 | RAG Pipeline & Retrieval Integration Tests (34/34 passed) | `npm run test:integration` | local postgres | phase-5 | 5 test files, 34 tests passed (`rag.test.js`: tenant vector retrieval with active config & non-deleted join, grounded answer with `[1]` citations, cost guard returning existing 200, force=true, review approval inserting `ai_approved` message without altering ticket status, edit_approve with custom body, 409 double review block, unanswerable topic returning `insufficient_evidence` with null body, dynamic `sourceState: superseded` on replacement, and `EXPLAIN` query execution plan) |
+| 2026-10-12 | 5 | RAG Security & RBAC Boundary Tests (18/18 passed) | `npm run test:security` | local postgres | phase-5 | 4 test files, 18 tests passed (`ragSecurity.test.js`: cross-tenant retrieval isolation returns 0 sources, cross-tenant suggestion access & review return 404, customer role blocked with 403 on all AI endpoints, adversarial prompt injection resilience) |
+| 2026-10-12 | 5 | Frontend UI & AI Component Tests (27/27 passed) | `npm run test:frontend` | local node v22 | phase-5 | 8 test files, 27 tests passed (including TicketDetail AI Assistant panel, generation, sources snapshot, and approval) |
+| 2026-10-12 | 5 | Full Test Suite (122/122 passed) | `npm test` | local node v22 + docker | phase-5 | 26 test files, 122 passed tests, 0 failed, 0 skipped |
+| 2026-10-12 | 5 | Code quality & Production Build | `npm run lint && npm run build` | local node v22 | phase-5 | ESLint passed with 0 errors/0 warnings; Vite bundled 1622 modules cleanly |
+| 2026-10-12 | 6 | Redis Cache Service Unit Tests (48/48 passed) | `npm run test:unit` | local node v22 | phase-6 | 10 test files, 48 tests passed (including `cacheService.test.js`: query hashing, normalized text hashing, fail-open on Redis errors, customer vs staff cache isolation, version counter invalidation) |
+| 2026-10-12 | 6 | Redis Caching & Invalidation Integration Tests (44/44 passed) | `npm run test:integration` | local postgres + redis | phase-6 | 7 test files, 44 tests passed (including `cache.test.js`: customer ticket list caching and customer-to-customer isolation, staff ticket list caching and invalidation on message, document list caching and invalidation on upload/delete, admin stats 60s cache and 403 customer refusal, admin indexing configs list, and 1h query embedding caching) |
+| 2026-10-12 | 6 | Rate Limiter Security & Fallback Tests (22/22 passed) | `npm run test:security` | local node v22 + redis | phase-6 | 5 test files, 22 tests passed (including `rateLimit.test.js`: 429 `RATE_LIMITED` enforcement, `Retry-After` header verification, `/health` and `/ready` unthrottled bypass, login IP+email key isolation, and in-memory insurance limiter fallback) |
+| 2026-10-12 | 6 | Reliability & Dependency Failure Tests | `npm test` | local node v22 | phase-6 | Verified `reliability.test.js` dependency failure error translation: `503 DATABASE_UNAVAILABLE`, `503 QUEUE_UNAVAILABLE`, `503 STORAGE_UNAVAILABLE`, `503 AI_PROVIDER_UNAVAILABLE` |
+| 2026-10-12 | 6 | Full Test Suite (141/141 passed) | `npm test` | local node v22 + docker | phase-6 | 30 test files, 141 passed tests, 0 failed, 0 skipped across backend unit/integration/security and frontend |
+| 2026-10-12 | 6 | Code quality & Production Build | `npm run lint && npm run build` | local node v22 | phase-6 | ESLint passed with 0 errors/0 warnings; Vite built 1622 modules cleanly into dist/ in 5.51s |
+| 2026-10-12 | 7 | Synthetic Multi-Page Knowledge Base & Questions Dataset | `node scripts/generate-synthetic-pdfs.js` | local node v22 | phase-7 | Generated 4 multi-page policy PDFs in `samples/knowledge-base/` (refund, shipping, security, subscription), created 35-question benchmark dataset in `docs/rag-eval/questions.json`, documented rubric and methodology |
+| 2026-10-12 | 7 | RAG Evaluation Baseline Harness | `npm run eval:mock` | local node v22 + docker | phase-7 | Evaluated 35 queries against isolated tenant: 100% Hit@K, 100% Recall@K, 0.954 MRR, 100% citation validity, 0% unsupported answers, 100% injection defense; generated baseline report `docs/rag-eval/results/2026-10-12-mock-mock-hash-v1-384.md` |
+| 2026-10-12 | 7 | Evaluation & Metric Regression Integration Tests (10/10 passed) | `npx vitest run tests/integration/ragEval.test.js` | local node v22 + docker | phase-7 | 1 test file, 10 tests passed (dataset schema, category coverage, multi-page extraction, Hit@K, MRR, citation validity, injection defense, tenant ingestion & vector retrieval) |
+| 2026-10-12 | 7 | Complete Full Test Suite (151/151 passed) | `npm test` | local node v22 + docker | phase-7 | 31 test files, 151 passed tests, 0 failed, 0 skipped across backend unit/integration/security and frontend |
+| 2026-10-12 | 7 | Code quality & Production Build | `npm run lint && npm run build` | local node v22 | phase-7 | ESLint passed with 0 errors/0 warnings; Vite built 1622 modules cleanly into dist/ in 4.99s |
+| 2026-10-12 | 8 | Production Compose Topology & Security Gates | `docker compose -f docker-compose.prod.yml config` | local docker | phase-8 | Verified `docker-compose.prod.yml`, internal network isolation (`supportflow_internal`), closed DB/Redis host ports, mandatory Redis password, Nginx gateway, named persistent volumes |
+| 2026-10-12 | 8 | Continuous Integration Workflow | `test -f .github/workflows/ci.yml` | GitHub Actions | phase-8 | Created `.github/workflows/ci.yml` with Node 22, pgvector & Redis service containers, lint, unit, migrations, integration, security, frontend, eval:mock, and Vite production build |
+| 2026-10-12 | 8 | Production Config & Deployment Tests (17/17 passed) | `npx vitest run tests/unit/productionConfig.test.js` | local node v22 | phase-8 | 1 test file, 17 tests passed (config production guards against mock providers, insecure cookies, missing Redis password; docker-compose.prod network isolation; CI workflow syntax; .env.example secret safety) |
+| 2026-10-12 | 8 | Synthetic Demo Seeding Script | `npm run seed` | local node v22 + docker | phase-8 | Seeded demo organization, 1 admin, 2 agents, 2 customers, 3 ticket lifecycle stages, and 4 multi-page policy PDFs with chunks and vector embeddings indexed |
+| 2026-10-12 | 8 | Portfolio Documentation Polish | `test -f README.md && test -f DEPLOYMENT.md` | local node v22 | phase-8 | Overhauled `README.md` with system architecture, badges, quick start, demo accounts, RAG evaluation metrics with honest mock appraisal, test matrix, and production checklist |
+| 2026-10-12 | 8 | Complete Full Test Suite (168/168 passed) | `npm test` | local node v22 + docker | phase-8 | 32 test files, 168 passed tests, 0 failed, 0 skipped across unit, integration, security, and frontend |
+| 2026-10-12 | 8 | Code quality & Production Build | `npm run lint && npm run build` | local node v22 | phase-8 | ESLint passed with 0 errors/0 warnings; Vite bundled 1622 modules cleanly into dist/ in 4.99s |
 
 ## 10. Document consistency rule
 

@@ -13,6 +13,7 @@ import TicketDetail from './pages/TicketDetail.jsx';
 import AgentDashboard from './pages/AgentDashboard.jsx';
 import AdminUsers from './pages/AdminUsers.jsx';
 import AdminAuditLogs from './pages/AdminAuditLogs.jsx';
+import KnowledgeDocuments from './pages/KnowledgeDocuments.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 function RootRedirect() {
@@ -76,6 +77,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['agent', 'admin']}>
               <AgentDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/agent/documents"
+          element={
+            <ProtectedRoute allowedRoles={['agent', 'admin']}>
+              <KnowledgeDocuments />
             </ProtectedRoute>
           }
         />

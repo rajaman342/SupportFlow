@@ -1,13 +1,18 @@
 import { Worker, Queue } from 'bullmq';
-import { getConfig, logger, closeDatabasePool, closeRedis } from '@supportflow/shared';
+import {
+  getConfig,
+  logger,
+  closeDatabasePool,
+  closeRedis,
+  DOCUMENT_INGEST_QUEUE_NAME,
+  getRedisConnection,
+  enqueueDocumentIngest,
+  documentVersionRepository
+} from '@supportflow/shared';
+import { processIngestJob } from './processors/ingestProcessor.js';
 
 const config = getConfig();
-
-// Extract connection options from REDIS_URL
-const redisConnection = {
-  url: config.REDIS_URL,
-  maxRetriesPerRequest: null
-};
+const redisConnection = getRedisConnection();
 
 export const PING_QUEUE_NAME = 'ping';
 
@@ -15,15 +20,25 @@ export function createPingQueue(connection = redisConnection) {
   return new Queue(PING_QUEUE_NAME, { connection });
 }
 
-export function createWorker(connection = redisConnection) {
-  const worker = new Worker(
+export function createPingWorker(connection = redisConnection) {
+  return new Worker(
     PING_QUEUE_NAME,
     async (job) => {
-      logger.info({ jobId: job.id, name: job.name, data: job.data }, 'Processing worker job');
+      logger.info({ jobId: job.id, name: job.name, data: job.data }, 'Processing ping worker job');
       if (job.name === 'ping') {
         return { pong: true, processedAt: new Date().toISOString() };
       }
       return { handled: true };
+    },
+    { connection, concurrency: 1 }
+  );
+}
+
+export function createIngestWorker(connection = redisConnection) {
+  const worker = new Worker(
+    DOCUMENT_INGEST_QUEUE_NAME,
+    async (job) => {
+      return await processIngestJob(job);
     },
     {
       connection,
@@ -32,32 +47,55 @@ export function createWorker(connection = redisConnection) {
   );
 
   worker.on('completed', (job, result) => {
-    logger.info({ jobId: job.id, result }, 'Job completed successfully');
+    logger.info({ jobId: job.id, result }, 'Document ingestion job completed');
   });
 
   worker.on('failed', (job, err) => {
-    logger.error({ jobId: job?.id, err: err.message }, 'Job failed');
+    logger.error({ jobId: job?.id, err: err.message }, 'Document ingestion job failed');
   });
 
   return worker;
 }
 
-// If executed directly, run the worker and dispatch an initial ping job
+export async function runReconciler() {
+  try {
+    const stuck = await documentVersionRepository.getStuckVersions(config.STUCK_JOB_MINUTES);
+    if (stuck && stuck.length > 0) {
+      logger.info({ count: stuck.length }, 'Reconciler found stuck document versions; re-enqueuing');
+      for (const v of stuck) {
+        try {
+          await enqueueDocumentIngest({
+            versionId: v.id,
+            organizationId: v.organization_id
+          });
+        } catch (enqueueErr) {
+          logger.warn({ versionId: v.id, err: enqueueErr.message }, 'Reconciler failed to re-enqueue version');
+        }
+      }
+    }
+  } catch (err) {
+    logger.error({ err: err.message }, 'Error running document reconciler cycle');
+  }
+}
+
+// If executed directly, run the workers and reconciler
 if (process.argv[1] && process.argv[1].endsWith('index.js')) {
-  logger.info({ queue: PING_QUEUE_NAME }, 'SupportFlow BullMQ worker starting');
+  logger.info({ queue: DOCUMENT_INGEST_QUEUE_NAME }, 'SupportFlow BullMQ worker starting');
 
   const pingQueue = createPingQueue();
-  const worker = createWorker();
+  const pingWorker = createPingWorker();
+  const ingestWorker = createIngestWorker();
 
-  // Enqueue a test ping job on startup so worker activity is verified
+  // Enqueue test ping
   pingQueue
     .add('ping', { sentAt: new Date().toISOString() }, { removeOnComplete: true })
-    .then((job) => {
-      logger.info({ jobId: job.id }, 'Enqueued initial startup ping job');
-    })
     .catch((err) => {
       logger.warn({ err: err.message }, 'Failed to enqueue startup ping job');
     });
+
+  // Reconciler interval
+  const reconcilerIntervalMs = (config.RECONCILER_INTERVAL_MINUTES || 5) * 60 * 1000;
+  const reconcilerTimer = setInterval(runReconciler, reconcilerIntervalMs);
 
   let isShuttingDown = false;
   async function gracefulShutdown(signal) {
@@ -65,9 +103,10 @@ if (process.argv[1] && process.argv[1].endsWith('index.js')) {
     isShuttingDown = true;
     logger.info({ signal }, 'Graceful shutdown initiated for worker');
 
+    clearInterval(reconcilerTimer);
+
     try {
-      await worker.close();
-      await pingQueue.close();
+      await Promise.all([pingWorker.close(), ingestWorker.close(), pingQueue.close()]);
       await Promise.all([closeDatabasePool(), closeRedis()]);
       logger.info('Worker cleanly stopped');
       process.exit(0);

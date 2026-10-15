@@ -10,6 +10,10 @@ import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
 import auditLogRoutes from './routes/auditLogRoutes.js';
+import documentRoutes from './routes/documentRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import { generalApiLimiter } from './middleware/rateLimiter.js';
 
 export function createApp() {
   const config = getConfig();
@@ -51,6 +55,9 @@ export function createApp() {
   app.use('/', healthRoutes);
   app.use('/api/v1', healthRoutes);
 
+  // General API rate limiter for /api/v1 routes
+  app.use('/api/v1', generalApiLimiter);
+
   // Authentication endpoints (/auth and /api/v1/auth)
   app.use('/auth', authRoutes);
   app.use('/api/v1/auth', authRoutes);
@@ -58,11 +65,20 @@ export function createApp() {
   // User management endpoints
   app.use('/api/v1/users', userRoutes);
 
+  // Admin stats and ops endpoints
+  app.use('/api/v1/admin', adminRoutes);
+
   // Ticketing endpoints
   app.use('/api/v1/tickets', ticketRoutes);
 
   // Audit log endpoints
   app.use('/api/v1/audit-logs', auditLogRoutes);
+
+  // Document management endpoints
+  app.use('/api/v1/documents', documentRoutes);
+
+  // AI suggestions endpoints
+  app.use('/api/v1/ai-suggestions', aiRoutes);
 
   // 404 handler for undefined routes
   app.use((req, _res, next) => {

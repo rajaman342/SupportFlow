@@ -14,6 +14,7 @@
     "build": "npm run build -w @supportflow/frontend",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit backend",
     "test:integration": "vitest run tests/integration",
     "test:security": "vitest run tests/security",
     "test:frontend": "vitest run --project frontend",
@@ -24,6 +25,10 @@
     "migrate:status": "node-pg-migrate -m migrations status",
     "migrate:down": "node-pg-migrate -m migrations down",
     "seed": "node scripts/seed.js",
+    "indexing:list": "node scripts/indexing-config.js list",
+    "indexing:active": "node scripts/indexing-config.js active",
+    "eval:mock": "node scripts/rag-eval.js --mock",
+    "eval:real": "node scripts/rag-eval.js --real",
     "spike:hash": "node scripts/spikes/password-hash.js"
   },
   "devDependencies": {

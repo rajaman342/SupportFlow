@@ -100,11 +100,42 @@ router.get(
   ticketController.getMessages
 );
 
+import { aiController } from '../controllers/aiController.js';
+import { aiSuggestionLimiter } from '../middleware/rateLimiter.js';
+
+const generateAiSuggestionSchema = z
+  .object({
+    force: z.boolean().optional()
+  })
+  .strict();
+
+const listAiSuggestionsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional()
+});
+
 // Post message on ticket (Owner or Agent/Admin)
 router.post(
   '/:id/messages',
   validateRequest({ params: idParamSchema, body: createMessageSchema }),
   ticketController.createMessage
+);
+
+// Generate AI suggestion (Agent/Admin only)
+router.post(
+  '/:id/ai-suggestions',
+  requireRole('agent', 'admin'),
+  aiSuggestionLimiter,
+  validateRequest({ params: idParamSchema, body: generateAiSuggestionSchema }),
+  aiController.generateSuggestion
+);
+
+// List AI suggestions for ticket (Agent/Admin only)
+router.get(
+  '/:id/ai-suggestions',
+  requireRole('agent', 'admin'),
+  validateRequest({ params: idParamSchema, query: listAiSuggestionsQuerySchema }),
+  aiController.listByTicket
 );
 
 export default router;

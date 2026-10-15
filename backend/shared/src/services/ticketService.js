@@ -2,6 +2,7 @@ import { ticketRepository } from '../repositories/ticketRepository.js';
 import { ticketMessageRepository } from '../repositories/ticketMessageRepository.js';
 import { userRepository } from '../repositories/userRepository.js';
 import { auditService } from './auditService.js';
+import { cacheService } from '../cache/cacheService.js';
 import {
   ValidationError,
   NotFoundError,
@@ -14,12 +15,14 @@ export class TicketService {
     ticketRepo = ticketRepository,
     messageRepo = ticketMessageRepository,
     userRepo = userRepository,
-    auditor = auditService
+    auditor = auditService,
+    cache = cacheService
   ) {
     this.ticketRepo = ticketRepo;
     this.messageRepo = messageRepo;
     this.userRepo = userRepo;
     this.auditor = auditor;
+    this.cache = cache;
   }
 
   async createTicket({
@@ -57,6 +60,8 @@ export class TicketService {
       ip
     });
 
+    await this.cache.invalidateTickets(organizationId, customerId);
+
     return { ...ticket, firstMessage: message };
   }
 
@@ -64,7 +69,15 @@ export class TicketService {
     const isCustomer = user.role === 'customer';
     const customerId = isCustomer ? user.id : null;
 
-    return this.ticketRepo.listTickets({
+    if (isCustomer) {
+      const cached = await this.cache.getCustomerTicketList(organizationId, user.id, query);
+      if (cached) return cached;
+    } else {
+      const cached = await this.cache.getStaffTicketList(organizationId, user.role, query);
+      if (cached) return cached;
+    }
+
+    const result = await this.ticketRepo.listTickets({
       organizationId,
       customerId,
       q: query.q || null,
@@ -77,6 +90,14 @@ export class TicketService {
       page: query.page ? parseInt(query.page, 10) : 1,
       limit: query.limit ? Math.min(parseInt(query.limit, 10), 100) : 20
     });
+
+    if (isCustomer) {
+      await this.cache.setCustomerTicketList(organizationId, user.id, query, result, 30);
+    } else {
+      await this.cache.setStaffTicketList(organizationId, user.role, query, result, 30);
+    }
+
+    return result;
   }
 
   async getTicket({ ticketId, organizationId, user }) {
@@ -110,6 +131,8 @@ export class TicketService {
         ip
       });
     }
+
+    await this.cache.invalidateTickets(organizationId, ticket.customer_id);
 
     return updated;
   }
@@ -156,6 +179,8 @@ export class TicketService {
       requestId,
       ip
     });
+
+    await this.cache.invalidateTickets(organizationId, ticket.customer_id);
 
     return updated;
   }
@@ -222,6 +247,8 @@ export class TicketService {
       ip
     });
 
+    await this.cache.invalidateTickets(organizationId, ticket.customer_id);
+
     return updated;
   }
 
@@ -260,6 +287,8 @@ export class TicketService {
       body,
       source: 'human'
     });
+
+    await this.cache.invalidateTickets(organizationId, ticket.customer_id);
 
     return message;
   }

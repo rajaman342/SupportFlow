@@ -4,6 +4,7 @@ import { authController } from '../controllers/authController.js';
 import { validateRequest } from '../middleware/validate.js';
 import { authenticateMiddleware } from '../middleware/authenticate.js';
 import { csrfProtectionMiddleware } from '../middleware/csrf.js';
+import { loginLimiter, registerLimiter, refreshLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -32,12 +33,14 @@ const changePasswordSchema = z
 // Public routes
 router.post(
   '/register',
+  registerLimiter,
   validateRequest({ body: registerSchema }),
   authController.register
 );
 
 router.post(
   '/login',
+  loginLimiter,
   validateRequest({ body: loginSchema }),
   authController.login
 );
@@ -45,6 +48,7 @@ router.post(
 // Cookie-authenticated routes protected by CSRF Origin + custom header
 router.post(
   '/refresh',
+  refreshLimiter,
   csrfProtectionMiddleware,
   authController.refresh
 );

@@ -127,3 +127,26 @@ npm run lint
 | 2026-10-11 | phase-2 | `npm run test:integration` | local node v22 + docker pg | 3 files passed, 18 tests passed | Auth flow + token reuse detection, ticket lifecycle & FTS, user administration |
 | 2026-10-12 | phase-3 | `npm run test:frontend` | local node v22 | 7 files passed, 23 tests passed | Phase 3 frontend components, routing, in-memory auth client, and role access tests |
 | 2026-10-12 | phase-3 | `npm test` | local node v22 + docker | 16 files passed, 65 tests passed | Complete Phase 1-3 full test suite |
+| 2026-10-12 | phase-4 | `npx vitest run tests/unit` | local node v22 | 3 files passed, 16 tests passed | Phase 4 unit tests (pdfExtractor, chunker, mockEmbeddingProvider) |
+| 2026-10-12 | phase-4 | `npm run test:integration` | local node v22 + docker | 4 files passed, 24 tests passed | Phase 4 document upload, worker ingestion, safe replacement, reindexing, download URL, soft delete |
+| 2026-10-12 | phase-4 | `npm run test:security` | local node v22 + docker | 3 files passed, 13 tests passed | Phase 4 tenant isolation, customer RBAC refusal, HMAC token verification |
+| 2026-10-12 | phase-4 | `npm run test:frontend` | local node v22 | 8 files passed, 26 tests passed | Phase 4 knowledge documents UI component tests |
+| 2026-10-12 | phase-4 | `npm test` | local node v22 + docker | 22 files passed, 93 tests passed | Complete full test suite (Phase 1-4) |
+| 2026-10-12 | phase-5 | `npx vitest run tests/unit` | local node v22 | 5 files passed, 29 tests passed | Phase 5 unit tests (citationValidator, mockLlmProvider, chunker, mockEmbeddingProvider, pdfExtractor) |
+| 2026-10-12 | phase-5 | `npm run test:integration` | local node v22 + docker | 5 files passed, 34 tests passed | Phase 5 RAG retrieval, citations, cost guard, approval without status change, edit_approve, EXPLAIN |
+| 2026-10-12 | phase-5 | `npm run test:security` | local node v22 + docker | 4 files passed, 18 tests passed | Phase 5 cross-org retrieval isolation, 404 boundaries, customer 403 RBAC, prompt injection defense |
+| 2026-10-12 | phase-5 | `npm run test:frontend` | local node v22 | 8 files passed, 27 tests passed | Phase 5 TicketDetail AI Assistant panel, draft generation, and human approval |
+| 2026-10-12 | phase-5 | `npm test` | local node v22 + docker | 26 files passed, 122 tests passed | Complete Phase 1-5 test suite (122 passed, 0 failed, 0 skipped) |
+| 2026-10-12 | phase-6 | `npm run test:unit` | local node v22 | 10 files passed, 48 tests passed | Phase 6 unit tests (cacheService query hashing, normalized text hashing, fail-open on Redis errors, customer vs staff cache isolation, version counter invalidation) |
+| 2026-10-12 | phase-6 | `npm run test:integration` | local node v22 + docker | 7 files passed, 44 tests passed | Phase 6 cache isolation, version invalidation on ticket/document writes, admin stats 60s cache, indexing configs list, and 1h query embedding caching |
+| 2026-10-12 | phase-6 | `npm run test:security` | local node v22 + docker | 5 files passed, 22 tests passed | Phase 6 rate limiting enforcement: 429 RATE_LIMITED, Retry-After header, health bypass, IP+email isolation, insurance memory fallback |
+| 2026-10-12 | phase-6 | `npm run test:frontend` | local node v22 | 8 files passed, 27 tests passed | Complete frontend test suite |
+| 2026-10-12 | phase-6 | `npm test` | local node v22 + docker | 30 files passed, 141 tests passed | Complete full test suite (141 passed, 0 failed, 0 skipped) |
+| 2026-10-12 | phase-7 | `npm run eval:mock` | local node v22 + docker | 35 questions evaluated, baseline written | Phase 7 evaluation baseline: 100% Hit@K, 100% Recall@K, 0.954 MRR, 100% citation validity, 100% injection defense |
+| 2026-10-12 | phase-7 | `npx vitest run tests/integration/ragEval.test.js` | local node v22 + docker | 1 file passed, 10 tests passed | Phase 7 evaluation dataset schema, multi-page PDFs, metric formulas, and isolated tenant vector retrieval |
+| 2026-10-12 | phase-7 | `npm test` | local node v22 + docker | 31 files passed, 151 tests passed | Complete full test suite (151 passed, 0 failed, 0 skipped across unit, integration, security, frontend) |
+| 2026-10-12 | phase-7 | `npm run lint && npm run build` | local node v22 | Passed 0 errors/0 warnings, Vite built 1622 modules | Complete code quality and frontend production build |
+| 2026-10-12 | phase-8 | `npx vitest run tests/unit/productionConfig.test.js` | local node v22 | 1 file passed, 17 tests passed | Phase 8 production config validation, compose network security, CI workflow specification, and secret templates |
+| 2026-10-12 | phase-8 | `docker compose -f docker-compose.prod.yml config` | local docker | Validated compose schema | Verified production Docker Compose topology, internal networking, closed database/redis ports |
+| 2026-10-12 | phase-8 | `npm test` | local node v22 + docker | 32 files passed, 168 tests passed | Complete full test suite (168 passed, 0 failed, 0 skipped across all test suites) |
+| 2026-10-12 | phase-8 | `npm run lint && npm run build` | local node v22 | Passed 0 errors/0 warnings, Vite built 1622 modules in 4.99s | Production code quality check and frontend build verification |

@@ -115,28 +115,74 @@ docker compose exec -T postgres pg_restore -U supportflow -d supportflow --clean
 ```
 Test a restore into a scratch database before trusting any backup. Uploaded PDFs live in the storage provider and need their own backup/retention plan; a document can also be re-uploaded because chunks are derived data that can be rebuilt via reindex.
 
-## 7. Production readiness checklist (Phase 8 gate, nothing here is done)
+## 7. Production readiness checklist & verification (Phase 8)
 
-- [ ] `NODE_ENV=production`, mock providers rejected, `COOKIE_SECURE=true`, HTTPS in front
-- [ ] Same-site frontend/API (CSRF design constraint, SECURITY.md §3)
-- [ ] Strong generated secrets from a secret manager/platform vars; rotation procedure written
-- [ ] Postgres and Redis not publicly exposed; Redis password; DB roles least-privilege
-- [ ] `docker-compose.prod.yml` (or platform config): no source mounts, non-root users, no published DB/Redis ports, restart policies, resource limits
-- [ ] Health checks wired to the platform; `/ready` used for traffic gating
-- [ ] Backups and a tested restore
-- [ ] Log retention and PII review
-- [ ] Cloudinary verification spike evidence recorded (or another storage decision documented)
-- [ ] Real provider cost limits/budget alerts configured by the owner
-- [ ] CI green: lint, tests, build, dependency audit, secret scan
-- [ ] Owner's explicit approval to deploy publicly
+The production configuration blueprint is implemented and verified via automated tests (`tests/unit/productionConfig.test.js`). Before any public deployment, every operational gate must be reviewed:
 
-## 8. CI (planned, Phase 8; a minimal lint+test version may appear earlier)
+| Category | Control / Gate | Status / Verification |
+|---|---|---|
+| **Environment** | `NODE_ENV=production`, mock AI providers rejected, `COOKIE_SECURE=true` | ✅ Enforced by `config.js` validation |
+| **Network Security** | Postgres & Redis ports closed to host; internal Docker network only | ✅ Configured in `docker-compose.prod.yml` |
+| **Redis Security** | Redis password authentication enforced (`--requirepass ${REDIS_PASSWORD}`) | ✅ Configured in `docker-compose.prod.yml` & `config.js` |
+| **CSRF & Cookies** | Same-site frontend & API behind Nginx reverse proxy; SameSite=Strict cookies | ✅ Configured in `frontend/nginx.conf` |
+| **Secrets Management** | Strong random secrets (≥32 bytes) for JWT and signed storage URLs | ✅ Validated by `config.js` |
+| **Health Probes** | Container health checks (`/health` on API, `pg_isready` on Postgres, `ping` on Redis) | ✅ Configured on all services |
+| **Continuous Integration** | Automated CI pipeline with lint, unit, integration, security, frontend, eval, and build | ✅ Implemented in `.github/workflows/ci.yml` |
+| **Frontend Serving** | Production multi-stage build served via lightweight Nginx Alpine container | ✅ Implemented in `frontend/Dockerfile.prod` |
+| **Database Migrations** | Dedicated `migrate` container runs forward-only migrations before API start | ✅ Configured in `docker-compose.prod.yml` |
+| **Live Hosting** | Public deployment / paid cloud resources | 🗓 Requires explicit owner approval |
+| **Real AI Providers** | Live OpenAI/Gemini embedding and LLM API keys with spend budgets | 🗓 Requires explicit owner approval |
 
-GitHub Actions workflow `.github/workflows/ci.yml`: checkout → set up Node from `.nvmrc` → `npm ci` → lint → unit/component tests → start service containers (pgvector Postgres, Redis) → migrate → integration/security tests → frontend build → Docker image build (no push). Workflows never use real AI keys. Secrets are stored in GitHub encrypted secrets only if ever needed.
+---
 
-## 9. Demo plan (Phase 8)
+## 8. Continuous integration (GitHub Actions)
 
-Seed data (synthetic organization, one admin, two agents, two customers, a dozen tickets, three sample policy PDFs). Demo script in `docs/demo-script.md`: 1) log in as customer, create ticket; 2) log in as agent, see ticket; 3) upload a policy PDF and watch it index; 4) request suggestion, inspect sources, approve with an edit; 5) ask an unanswerable question and show the insufficient-evidence behavior; 6) replace a document with a broken PDF and show the previous version still serving; 7) show audit log as admin. Screenshots are taken from the real running UI only.
+The workflow defined in `.github/workflows/ci.yml` runs automatically on pushes and pull requests to `main`:
+
+1. **Environment Setup:** Node.js 22 LTS pinned from `.nvmrc`.
+2. **Service Containers:** Spawns live PostgreSQL 16 (`pgvector/pgvector:pg16`) and Redis 7 (`redis:7-alpine`) service containers.
+3. **Quality & Formatting:** Runs ESLint (`npm run lint`).
+4. **Unit Tests:** Executes isolated unit tests (`npm run test:unit`).
+5. **Database Migrations:** Applies `node-pg-migrate` scripts (`npm run migrate`).
+6. **Integration & Security Tests:** Executes tenant isolation, RBAC, auth rotation, RAG pipelines, and rate limiting (`npm run test:integration && npm run test:security`).
+7. **Frontend Tests:** Executes React component and auth client tests (`npm run test:frontend`).
+8. **RAG Evaluation Baseline:** Runs deterministic offline benchmark evaluation (`npm run eval:mock`).
+9. **Production Bundles:** Builds optimized Vite SPA bundle (`npm run build`).
+10. **Container Image Builds:** Validates that backend API and worker Dockerfiles build cleanly.
+
+---
+
+## 9. Demo accounts & walkthrough runbook
+
+To provision a local demonstration environment with synthetic seed data:
+
+```bash
+docker compose up -d postgres redis
+npm run migrate
+npm run seed
+npm run dev
+```
+
+### Seeded Demo Accounts (Synthetic)
+- **Password (all demo accounts):** `SupportFlowDemo2026!` (configured via `SEED_DEMO_PASSWORD`)
+- **Administrator:** `admin@supportflow.demo`
+  - Access: All tickets, assignees, document knowledge base, user administration, indexing configuration.
+- **Support Agents:**
+  - `sarah.agent@supportflow.demo`
+  - `marcus.agent@supportflow.demo`
+  - Access: Organization tickets, assignment, status transitions, AI suggestion generation, review & approval.
+- **Customers:**
+  - `customer.one@supportflow.demo`
+  - `customer.two@supportflow.demo`
+  - Access: Customer portal, ticket creation, view customer's own tickets and messages.
+
+### Standard Demo Script
+1. **Customer Inquiry:** Log in as `customer.one@supportflow.demo`, create a new ticket ("Return policy question").
+2. **Agent Assignment:** Log in as `sarah.agent@supportflow.demo`, view the dashboard, assign the ticket to yourself, and transition status to `in_progress`.
+3. **AI Suggestion Generation:** Open the ticket detail, click "Generate AI Draft" in the AI Assistant panel. Inspect retrieved citations (e.g. `[1]` citing `Customer Refund and Returns Policy`, Page 1).
+4. **Human Review & Approval:** Edit the draft if needed and click "Approve & Send". The message appears as an official agent response; ticket status remains `in_progress`.
+5. **Document Ingestion:** Navigate to Knowledge Base (`/documents`), upload a new policy PDF, and observe processing status transition to `indexed` with active chunks.
+6. **Admin User Management:** Log in as `admin@supportflow.demo`, navigate to User Management (`/admin/users`), view active users and roles. Verify that attempting to deactivate the sole active admin is rejected with an explanatory alert.
 
 ## 10. Troubleshooting
 

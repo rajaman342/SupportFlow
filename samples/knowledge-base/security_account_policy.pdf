@@ -1,0 +1,75 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 6 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 487 >>
+stream
+BT
+/F1 12 Tf
+50 720 Td
+18 TL
+(User Account Security - Password and Lockout Rules) Tj
+T*
+(User passwords must contain at least 12 characters and include both uppercase and numeric characters.) Tj
+T*
+(Accounts are automatically locked after 5 consecutive failed authentication attempts.) Tj
+T*
+(Account unlock requests require email confirmation or identity verification with support.) Tj
+T*
+(Session tokens expire automatically after 15 minutes of inactivity for agent security.) Tj
+T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 7 0 R /Resources << /Font << /F1 8 0 R >> >> >>
+endobj
+7 0 obj
+<< /Length 489 >>
+stream
+BT
+/F1 12 Tf
+50 720 Td
+18 TL
+(Multi-Factor Authentication and Security Alerts) Tj
+T*
+(Multi-factor authentication \(MFA\) is strictly mandatory for all administrative and billing accounts.) Tj
+T*
+(Changes to email addresses or payment profiles trigger an instant automated security alert.) Tj
+T*
+(If unauthorized access is suspected, agents can immediately revoke all active refresh tokens.) Tj
+T*
+(Support agents will never request your account password under any circumstances.) Tj
+T*
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000000785 00000 n 
+0000000855 00000 n 
+0000000981 00000 n 
+0000001521 00000 n 
+trailer
+<< /Size 9 /Root 1 0 R >>
+startxref
+1591
+%%EOF

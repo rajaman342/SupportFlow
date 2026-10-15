@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { ticketsApi, usersApi } from '../services/api.js';
+import { ticketsApi, usersApi, aiSuggestionsApi } from '../services/api.js';
 import { StatusBadge, PriorityBadge, RoleBadge } from '../components/Badge.jsx';
 import LoadingSpinner from '../components/LoadingSpinner.jsx';
 import Alert from '../components/Alert.jsx';
@@ -17,7 +17,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  MessageSquare
+  MessageSquare,
+  Sparkles,
+  Check,
+  Edit,
+  X,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function TicketDetail() {
@@ -34,6 +42,14 @@ export default function TicketDetail() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
+
+  // AI Assistant state
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReviewLoading, setAiReviewLoading] = useState(false);
+  const [editingDraft, setEditingDraft] = useState(false);
+  const [editedDraftBody, setEditedDraftBody] = useState('');
+  const [showSources, setShowSources] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -54,9 +70,69 @@ export default function TicketDetail() {
     }
   }, [id]);
 
+  const loadLatestAiSuggestion = useCallback(async () => {
+    if (!isStaff) return;
+    try {
+      const res = await aiSuggestionsApi.list(id, { limit: 1 });
+      if (res.data && res.data.length > 0) {
+        setAiSuggestion(res.data[0]);
+        setEditedDraftBody(res.data[0].draftBody || '');
+      }
+    } catch {
+      // non-critical if suggestion lookup fails
+    }
+  }, [id, isStaff]);
+
   useEffect(() => {
     loadTicketAndMessages();
-  }, [loadTicketAndMessages]);
+    loadLatestAiSuggestion();
+  }, [loadTicketAndMessages, loadLatestAiSuggestion]);
+
+  const handleGenerateAi = async (force = false) => {
+    setAiLoading(true);
+    setError(null);
+    try {
+      const suggestion = await aiSuggestionsApi.generate(id, force);
+      setAiSuggestion(suggestion);
+      setEditedDraftBody(suggestion.draftBody || '');
+      setEditingDraft(false);
+      setActionSuccess(force ? 'Regenerated AI response draft.' : 'Loaded AI response draft.');
+    } catch (err) {
+      setError(err.message || 'Failed to generate AI draft');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleReviewAi = async (action) => {
+    if (!aiSuggestion) return;
+    setAiReviewLoading(true);
+    setError(null);
+    try {
+      const payload = { action };
+      if (action === 'edit_approve') {
+        payload.body = editedDraftBody.trim();
+      }
+      const updated = await aiSuggestionsApi.review(aiSuggestion.id, payload);
+      setAiSuggestion(updated);
+      setEditingDraft(false);
+
+      if (action === 'approve' || action === 'edit_approve') {
+        const messagesData = await ticketsApi.getMessages(id, { limit: 100 });
+        setMessages(messagesData.data || []);
+        setActionSuccess('AI draft approved and posted to ticket conversation.');
+        setTimeout(scrollToBottom, 100);
+      } else if (action === 'reject') {
+        setActionSuccess('AI suggestion rejected.');
+      } else if (action === 'dismiss') {
+        setActionSuccess('AI suggestion dismissed.');
+      }
+    } catch (err) {
+      setError(err.message || `Failed to ${action} AI suggestion`);
+    } finally {
+      setAiReviewLoading(false);
+    }
+  };
 
   // If admin, load staff members for assignment options
   useEffect(() => {
@@ -269,6 +345,266 @@ export default function TicketDetail() {
               })}
               <div ref={messagesEndRef} />
             </div>
+
+            {/* AI Assistant Panel (Staff Only) */}
+            {isStaff && (
+              <div className="bg-slate-900/90 border border-indigo-500/30 rounded-xl p-5 shadow-lg space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-indigo-400" />
+                    <h3 className="text-sm font-semibold text-white tracking-wide">
+                      AI Response Assistant
+                    </h3>
+                    {(!aiSuggestion || aiSuggestion.provider === 'mock') && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                        Mock AI (development)
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={aiLoading || aiReviewLoading}
+                      onClick={() => handleGenerateAi(Boolean(aiSuggestion))}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition shadow-sm disabled:opacity-50"
+                    >
+                      {aiLoading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Generating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>{aiSuggestion ? 'Regenerate Draft' : 'Generate AI Draft'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {aiSuggestion ? (
+                  <div className="space-y-3 pt-2 border-t border-slate-800">
+                    {/* Outcome and Category Info */}
+                    <div className="flex items-center justify-between text-xs text-slate-400 flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-slate-300">Status:</span>
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold uppercase ${
+                          aiSuggestion.reviewStatus === 'approved' || aiSuggestion.reviewStatus === 'edited_approved'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : aiSuggestion.reviewStatus === 'rejected'
+                            ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                            : aiSuggestion.reviewStatus === 'dismissed'
+                            ? 'bg-slate-700 text-slate-300'
+                            : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                        }`}>
+                          {aiSuggestion.reviewStatus.replace('_', ' ')}
+                        </span>
+
+                        {aiSuggestion.suggestedCategory && (
+                          <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[11px] border border-slate-700">
+                            Category: {aiSuggestion.suggestedCategory}
+                          </span>
+                        )}
+                        {aiSuggestion.suggestedPriority && (
+                          <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[11px] border border-slate-700">
+                            Priority: {aiSuggestion.suggestedPriority}
+                          </span>
+                        )}
+                      </div>
+
+                      {aiSuggestion.topSimilarity !== null && (
+                        <span className="text-slate-400 text-[11px]">
+                          Top Similarity: {(aiSuggestion.topSimilarity * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Warning if any cited source has changed */}
+                    {aiSuggestion.sources?.some((s) => s.sourceState && s.sourceState !== 'current') && (
+                      <div className="p-3 bg-amber-950/40 border border-amber-600/40 rounded-lg text-amber-200 text-xs flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                        <span>Warning: A cited document was replaced or deleted since this draft was generated.</span>
+                      </div>
+                    )}
+
+                    {/* Outcome: Answered */}
+                    {aiSuggestion.outcome === 'answered' && (
+                      <div className="space-y-2">
+                        {editingDraft ? (
+                          <div className="space-y-2">
+                            <textarea
+                              rows={4}
+                              value={editedDraftBody}
+                              onChange={(e) => setEditedDraftBody(e.target.value)}
+                              className="w-full px-3 py-2 bg-slate-950 border border-indigo-500/50 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              placeholder="Edit response before approving..."
+                            />
+                            <div className="flex items-center gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingDraft(false);
+                                  setEditedDraftBody(aiSuggestion.draftBody || '');
+                                }}
+                                className="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs transition"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                disabled={aiReviewLoading || !editedDraftBody.trim()}
+                                onClick={() => handleReviewAi('edit_approve')}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition disabled:opacity-50"
+                              >
+                                {aiReviewLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                <span>Approve with Edits</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-lg space-y-3">
+                            <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
+                              {aiSuggestion.draftBody}
+                            </p>
+
+                            {aiSuggestion.reviewStatus === 'pending_review' && (
+                              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 flex-wrap gap-2">
+                                <span className="text-xs text-slate-400 italic">
+                                  Review required: Human approval will post this reply to the customer.
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={aiReviewLoading}
+                                    onClick={() => handleReviewAi('reject')}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-medium transition disabled:opacity-50"
+                                  >
+                                    <X className="w-3.5 h-3.5 text-red-400" />
+                                    <span>Reject</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={aiReviewLoading}
+                                    onClick={() => setEditingDraft(true)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-indigo-700/60 hover:bg-indigo-900/40 text-indigo-200 text-xs font-medium transition disabled:opacity-50"
+                                  >
+                                    <Edit className="w-3.5 h-3.5 text-indigo-400" />
+                                    <span>Edit & Approve</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={aiReviewLoading}
+                                    onClick={() => handleReviewAi('approve')}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-sm disabled:opacity-50"
+                                  >
+                                    {aiReviewLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                    <span>Approve Draft</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Outcome: Insufficient Evidence */}
+                    {aiSuggestion.outcome === 'insufficient_evidence' && (
+                      <div className="p-3 bg-amber-950/20 border border-amber-800/30 rounded-lg space-y-2">
+                        <p className="text-xs text-amber-200">
+                          Insufficient Evidence: The knowledge base does not contain enough verified information to generate a grounded response.
+                        </p>
+                        {aiSuggestion.reviewStatus === 'pending_review' && (
+                          <button
+                            type="button"
+                            disabled={aiReviewLoading}
+                            onClick={() => handleReviewAi('dismiss')}
+                            className="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                          >
+                            Dismiss
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Outcome: Conflicting Evidence */}
+                    {aiSuggestion.outcome === 'conflicting_evidence' && (
+                      <div className="p-3 bg-purple-950/20 border border-purple-800/30 rounded-lg space-y-2">
+                        <p className="text-xs text-purple-200">
+                          Conflicting Evidence: Policy documents contain conflicting information. Please review sources manually.
+                        </p>
+                        {aiSuggestion.reviewStatus === 'pending_review' && (
+                          <button
+                            type="button"
+                            disabled={aiReviewLoading}
+                            onClick={() => handleReviewAi('dismiss')}
+                            className="text-xs px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                          >
+                            Dismiss
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Retrieved Sources Snapshot */}
+                    {aiSuggestion.sources && aiSuggestion.sources.length > 0 && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowSources(!showSources)}
+                          className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>
+                            {showSources ? 'Hide Sources' : `View Retrieved Sources (${aiSuggestion.sources.length})`}
+                          </span>
+                          {showSources ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
+
+                        {showSources && (
+                          <div className="mt-2.5 space-y-2 max-h-60 overflow-y-auto pr-1">
+                            {aiSuggestion.sources.map((src) => (
+                              <div
+                                key={src.id || src.rank}
+                                className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-xs space-y-1"
+                              >
+                                <div className="flex items-center justify-between text-slate-400 flex-wrap gap-1">
+                                  <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                                    <span className="px-1.5 py-0.2 rounded bg-indigo-900/50 text-indigo-300 font-mono text-[10px]">
+                                      [{src.rank}]
+                                    </span>
+                                    {src.documentTitle} (p. {src.pageNumber})
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    {src.citedInAnswer && (
+                                      <span className="px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 text-[10px] border border-emerald-800/40">
+                                        Cited in Answer
+                                      </span>
+                                    )}
+                                    <span className="text-slate-500 font-mono text-[10px]">
+                                      {(src.similarity * 100).toFixed(0)}% match
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="text-slate-300 line-clamp-3 text-[11px] leading-relaxed">
+                                  "{src.snippet}"
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-950/40 border border-slate-800/80 rounded-lg text-xs text-slate-400 flex items-center justify-between">
+                    <span>No draft generated yet. Click "Generate AI Draft" to retrieve relevant knowledge base policies.</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Reply Form */}
             <form onSubmit={handleSendMessage} className="pt-4 border-t border-slate-700/60 space-y-3">

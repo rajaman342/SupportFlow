@@ -58,3 +58,5 @@ export async function closeRedis(redis = null) {
     }
   }
 }
+
+export const closeRedisClient = closeRedis;

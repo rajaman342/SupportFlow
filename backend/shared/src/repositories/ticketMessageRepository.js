@@ -68,8 +68,21 @@ export class TicketMessageRepository {
 
     const offset = (page - 1) * limit;
     const query = `
-      SELECT m.id, m.ticket_id, m.organization_id, m.author_id, m.author_role,
-             m.body, m.source, m.ai_response_id, m.created_at,
+      SELECT m.id,
+             m.ticket_id AS "ticketId",
+             m.ticket_id,
+             m.organization_id AS "organizationId",
+             m.organization_id,
+             m.author_id AS "authorId",
+             m.author_id,
+             m.author_role AS "authorRole",
+             m.author_role,
+             m.body,
+             m.source,
+             m.ai_response_id AS "aiResponseId",
+             m.ai_response_id,
+             m.created_at AS "createdAt",
+             m.created_at,
              json_build_object('id', u.id, 'fullName', u.full_name, 'role', u.role) AS author
       FROM ticket_messages m
       JOIN users u ON u.id = m.author_id

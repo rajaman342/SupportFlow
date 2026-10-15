@@ -1,10 +1,20 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   getConfig,
   organizationRepository,
   userRepository,
   ticketRepository,
   ticketMessageRepository,
+  documentRepository,
+  documentVersionRepository,
+  documentChunkRepository,
+  indexingConfigRepository,
+  extractPdfText,
+  chunkPages,
+  getEmbeddingProvider,
   hashPassword,
+  getDatabasePool,
   closeDatabasePool,
   logger
 } from '../backend/shared/src/index.js';
@@ -43,6 +53,9 @@ async function seed() {
         role
       });
       logger.info({ email, role }, 'Created user');
+    } else {
+      const pool = getDatabasePool();
+      await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, user.id]);
     }
     return user;
   }
@@ -103,6 +116,79 @@ async function seed() {
     });
     await ticketRepository.updateStatus(t3.ticket.id, org.id, 'resolved', new Date().toISOString());
     logger.info({ ticketId: t3.ticket.id }, 'Created resolved sample ticket');
+  }
+
+  // 4. Sample Policy Knowledge Documents
+  const existingDocs = await documentRepository.list(org.id, { limit: 1 });
+  if (existingDocs.total === 0) {
+    const samplesDir = path.resolve(process.cwd(), 'samples/knowledge-base');
+    const activeConfig = await indexingConfigRepository.getActiveConfig();
+    const embeddingProvider = getEmbeddingProvider();
+
+    const samplePolicies = [
+      { file: 'refund_policy.pdf', title: 'Customer Refund and Returns Policy' },
+      { file: 'shipping_policy.pdf', title: 'Shipping and Delivery Guidelines' },
+      { file: 'security_account_policy.pdf', title: 'Account Security and Authentication Policy' },
+      { file: 'subscription_cancellation_policy.pdf', title: 'Subscription Plans and Cancellation Terms' }
+    ];
+
+    for (const item of samplePolicies) {
+      const filePath = path.join(samplesDir, item.file);
+      if (!fs.existsSync(filePath)) continue;
+
+      const pdfBuffer = fs.readFileSync(filePath);
+      const extracted = await extractPdfText(pdfBuffer);
+      const chunks = chunkPages(extracted.pages, {
+        chunkSizeChars: activeConfig.chunk_size_chars,
+        chunkOverlapChars: activeConfig.chunk_overlap_chars
+      });
+
+      const doc = await documentRepository.create({
+        organizationId: org.id,
+        createdBy: admin.id,
+        title: item.title,
+        originalFilename: item.file,
+        mimeType: 'application/pdf',
+        storageKey: `demo/${item.file}`,
+        fileSizeBytes: pdfBuffer.length,
+        fileHashSha256: `seed_sha256_${item.file}`
+      });
+
+      const version = await documentVersionRepository.create({
+        documentId: doc.id,
+        organizationId: org.id,
+        versionNumber: 1,
+        origin: 'upload',
+        uploadedBy: admin.id,
+        originalFilename: item.file,
+        mimeType: 'application/pdf',
+        sizeBytes: pdfBuffer.length,
+        sha256: `seed_sha256_${item.file}`,
+        storageProvider: 'local',
+        storageKey: `demo/${item.file}`,
+        status: 'processing'
+      });
+
+      const vectors = await embeddingProvider.embedDocuments(chunks.map((c) => c.content));
+      const readyChunks = chunks.map((c, idx) => ({
+        ...c,
+        organizationId: org.id,
+        documentId: doc.id,
+        documentVersionId: version.id,
+        indexingConfigId: activeConfig.id,
+        embeddingDimensions: activeConfig.dimensions,
+        embedding: vectors[idx]
+      }));
+
+      await documentChunkRepository.insertChunks(readyChunks);
+      await documentVersionRepository.atomicSwapVersion({
+        documentId: doc.id,
+        versionId: version.id,
+        pageCount: extracted.pageCount
+      });
+
+      logger.info({ title: item.title, chunks: chunks.length }, 'Seeded sample policy document');
+    }
   }
 
   logger.info('Database seeding completed successfully');
